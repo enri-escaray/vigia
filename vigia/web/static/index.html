@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vigía · Centro de monitoreo</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%230f172a' stroke='%2338bdf8' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23ef4444'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div>
+        <h1 id="sys-name">Vigía</h1>
+        <small id="clock">—</small>
+      </div>
+    </div>
+    <nav class="modes" id="modes" aria-label="Modalidad de vigilancia"></nav>
+    <div class="top-actions">
+      <span class="chip" id="chip-cams" title="Cámaras en línea">— cámaras</span>
+      <span class="chip chip-warn" id="chip-pending" title="Alertas sin reconocer">0 pendientes</span>
+      <button class="icon-btn" id="btn-sound" type="button" title="Sonido de alertas en este navegador" aria-pressed="true">🔔</button>
+      <button class="icon-btn" id="btn-test" type="button" title="Enviar una alerta de prueba por todos los canales">⚡</button>
+      <span class="conn" id="conn" title="Conexión en vivo con el servidor"></span>
+    </div>
+  </header>
+
+  <section class="mode-strip" id="mode-strip" aria-live="polite"></section>
+
+  <main class="layout">
+    <section class="cams" id="cams" aria-label="Cámaras">
+      <p class="empty" id="cams-empty">Cargando cámaras…</p>
+    </section>
+
+    <aside class="alerts" aria-label="Alertas">
+      <div class="alerts-head">
+        <h2>Alertas</h2>
+        <div class="alerts-tools">
+          <select id="f-sev" aria-label="Severidad mínima">
+            <option value="">Todas</option>
+            <option value="2">Media o más</option>
+            <option value="3">Alta o más</option>
+            <option value="4">Solo críticas</option>
+          </select>
+          <label class="check"><input type="checkbox" id="f-pending"> Pendientes</label>
+          <button class="btn small" id="btn-ack-all" type="button">Reconocer todas</button>
+        </div>
+        <div class="stats" id="stats"></div>
+      </div>
+      <ul class="alert-list" id="alert-list"></ul>
+      <p class="empty" id="alerts-empty" hidden>Sin alertas por ahora. 👌</p>
+      <button class="btn ghost wide" id="btn-more" type="button" hidden>Cargar más</button>
+    </aside>
+  </main>
+
+  <dialog id="dlg-alert" class="dialog">
+    <form method="dialog" class="dialog-close"><button class="icon-btn" aria-label="Cerrar">✕</button></form>
+    <div class="dlg-alert-body">
+      <div class="evidence">
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab active" data-tab="foto">Captura</button>
+          <button type="button" class="tab" data-tab="clip">Clip</button>
+        </div>
+        <img id="ev-img" alt="Captura de la alerta">
+        <video id="ev-video" controls playsinline hidden></video>
+        <p class="clip-msg" id="ev-clip-msg" hidden></p>
+      </div>
+      <div class="details">
+        <span class="badge" id="d-sev"></span>
+        <h3 id="d-title"></h3>
+        <p id="d-msg"></p>
+        <dl>
+          <dt>Cámara</dt><dd id="d-cam"></dd>
+          <dt>Fecha</dt><dd id="d-date"></dd>
+          <dt>Modalidad</dt><dd id="d-mode"></dd>
+          <dt>Regla</dt><dd id="d-rule"></dd>
+          <dt>Zona</dt><dd id="d-zone"></dd>
+          <dt>Estado</dt><dd id="d-state"></dd>
+        </dl>
+        <div class="details-actions">
+          <button class="btn primary" id="d-ack" type="button">Reconocer</button>
+          <a class="btn ghost" id="d-download" download>Descargar clip</a>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-zones" class="dialog wide">
+    <form method="dialog" class="dialog-close"><button class="icon-btn" aria-label="Cerrar">✕</button></form>
+    <h3 class="dlg-title">Zonas y líneas · <span id="z-cam"></span></h3>
+    <div class="zone-editor">
+      <div class="zone-canvas-wrap">
+        <div class="zone-stage" id="z-stage">
+          <img id="z-img" alt="Imagen actual de la cámara">
+          <canvas id="z-canvas"></canvas>
+        </div>
+        <p class="hint" id="z-hint">Elija “Nueva zona” o “Nueva línea” y haga clic sobre la imagen.</p>
+      </div>
+      <div class="zone-side">
+        <div class="zone-tools">
+          <button class="btn small" id="z-new-zone" type="button">＋ Nueva zona</button>
+          <button class="btn small" id="z-new-line" type="button">＋ Nueva línea</button>
+          <button class="btn small ghost" id="z-finish" type="button" hidden>Terminar zona</button>
+          <button class="btn small ghost" id="z-refresh" type="button" title="Tomar otra imagen de la cámara">↻ Imagen</button>
+        </div>
+        <ul class="zone-list" id="z-list"></ul>
+        <p class="hint small">Las zonas usan el punto de apoyo de cada objeto (los pies). En las líneas, la flecha indica el sentido de <b>entrada</b>; use ⇄ para invertirlo. Arrastre los vértices para ajustarlos.</p>
+        <p class="form-error" id="z-error" hidden></p>
+        <div class="zone-actions">
+          <button class="btn ghost" id="z-cancel" type="button">Cancelar</button>
+          <button class="btn primary" id="z-save" type="button">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toasts" id="toasts" aria-live="assertive"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

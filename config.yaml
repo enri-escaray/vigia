@@ -1,0 +1,328 @@
+# =============================================================================
+#  VIGÍA · configuración
+#  Coordenadas de zonas/líneas: fracciones de la imagen (0 a 1), origen arriba
+#  a la izquierda. Lo más cómodo es dibujarlas desde el panel web
+#  ("Zonas y líneas"), que guarda los cambios en este mismo archivo.
+#  Se pueden usar variables de entorno: ${VARIABLE} o ${VARIABLE:-por_defecto}
+#  (un archivo .env junto a este YAML se carga solo).
+# =============================================================================
+
+sistema:
+  nombre: "Vigía"
+  datos: datos            # alertas (SQLite), capturas, clips y registro
+  retencion_dias: 30      # se borran evidencias más antiguas (0 = nunca)
+  nivel_log: INFO
+
+web:
+  host: 127.0.0.1         # 0.0.0.0 para verlo desde otros equipos de la red
+  puerto: 8080
+  usuario: ""             # si define usuario y clave, el panel pide contraseña
+  clave: ""
+
+deteccion:
+  tipo: auto              # auto | yolo | hog | movimiento
+  modelo: modelos/yolo11n.pt   # se descarga solo la primera vez (~6 MB)
+  confianza: 0.40
+  tamano_imagen: 640
+  dispositivo: ""         # "" = automático, "cpu", "cuda:0"...
+  confianza_por_categoria:
+    arma: 0.50
+  # Clases del modelo -> categorías. Con un modelo propio (p. ej. entrenado
+  # para detectar pistolas) agregue sus clases aquí:
+  # categorias:
+  #   arma: [knife, "baseball bat", pistol, rifle]
+
+seguimiento:
+  confirmaciones: 3       # detecciones seguidas para confirmar un objeto
+  edad_max: 2.0           # segundos que se recuerda un objeto que dejó de verse
+  edad_max_por_categoria:
+    equipaje: 10
+
+grabacion:
+  clips: true
+  segundos_antes: 5
+  segundos_despues: 5
+  duracion_max: 30
+  calidad_jpeg: 80
+  ancho_clip: 960         # los clips ocupan ~0,65 MB por segundo a 960 px y 10 fps
+  espacio_max_gb: 5       # al superarse se borran los clips más viejos (0 = sin límite)
+
+camaras:
+  - id: cam1
+    nombre: "Webcam"
+    fuente: 0             # índice de webcam (ver: python -m vigia camaras)
+    fps: 10               # cuadros analizados por segundo
+    fps_deteccion: 5      # detecciones por segundo (más = más CPU)
+    fps_reposo: 1         # detecciones por segundo cuando la escena está quieta
+    ancho_max: 1280
+    zonas:
+      - nombre: restringida
+        puntos: [[0.62, 0.35], [0.98, 0.35], [0.98, 0.98], [0.62, 0.98]]
+      - nombre: entrada
+        puntos: [[0.02, 0.45], [0.32, 0.45], [0.32, 0.98], [0.02, 0.98]]
+    lineas:
+      - nombre: acceso
+        puntos: [[0.4, 0.98], [0.4, 0.1]]
+
+  # --- Cámaras públicas para probar el sistema (Caltrans, California: datos
+  # abiertos, sin clave). Sus transmisiones a veces se caen: desactívelas con
+  # "activo: no" o busque otras con: python -m vigia publicas
+  # "modalidad" fija la modalidad de la cámara: no cambia con la general.
+  - id: autopista
+    nombre: "Autopista I-80 · Emeryville (EE. UU.)"
+    fuente: "https://wzmedia.dot.ca.gov/D4/E80_JWO_ASHBY_Av.stream/playlist.m3u8"
+    modalidad: transito
+    fps: 8
+    fps_deteccion: 4
+    deteccion:
+      confianza: 0.25       # de noche el modelo ve los autos con poca confianza
+    zonas: []
+    lineas: []
+  - id: cruce
+    nombre: "Cruce Ocean Blvd · Long Beach (EE. UU.)"
+    fuente: "https://wzmedia.dot.ca.gov/D7/CCTV-957.stream/playlist.m3u8"
+    modalidad: espacio_publico
+    fps: 8
+    fps_deteccion: 3
+    deteccion:
+      # Camiones vistos desde arriba: el modelo "n" casi no los reconoce; el "s"
+      # detecta 3 veces más (y usa el doble de CPU, por eso 3 detecciones por segundo).
+      modelo: modelos/yolo11s.pt
+      confianza: 0.25
+    seguimiento:
+      # En un cruce los vehículos se detienen en el semáforo, siempre en los mismos
+      # lugares: se muestran quietos desde un 35 % y esos lugares no se aprenden
+      # como "decorado" (podría ocultar a los próximos que paren ahí).
+      confianza_quietos: 0.35
+      descartar_fijos_tras: 0
+    zonas: []
+    lineas: []
+
+  # Cámara IP por RTSP (la mayoría de marcas: Hikvision, Dahua, TP-Link...):
+  # - id: patio
+  #   nombre: "Patio"
+  #   fuente: "rtsp://${CAM_USUARIO}:${CAM_CLAVE}@192.168.1.64:554/Streaming/Channels/101"
+  #
+  # Un archivo de video (útil para pruebas):
+  # - id: prueba
+  #   nombre: "Video de prueba"
+  #   fuente: videos/pasillo.mp4
+  #   repetir: true
+
+# -----------------------------------------------------------------------------
+#  MODALIDADES: cada una define qué se considera sospechoso y con qué gravedad.
+#  Reglas: intrusion, presencia, merodeo, cruce_linea, objeto_abandonado,
+#  objeto_peligroso, aglomeracion, carrera, caida, altercado, sabotaje.
+#  Una regla con "zonas" solo se aplica en las cámaras que tienen esa zona;
+#  sin "zonas" vigila toda la imagen. Severidades: baja, media, alta, critica.
+# -----------------------------------------------------------------------------
+modalidades:
+  inicial: auto           # auto = según horario; o el nombre de una modalidad
+  por_defecto: hogar      # la que rige fuera de los tramos del horario
+  horario:
+    - modalidad: nocturno
+      dias: todos
+      desde: "23:00"
+      hasta: "06:00"
+    # Ejemplo para un negocio:
+    # - modalidad: comercio
+    #   dias: lun-sab
+    #   desde: "09:00"
+    #   hasta: "20:00"
+
+  definiciones:
+    desarmado:
+      etiqueta: "Desarmado"
+      descripcion: "Sin vigilancia de intrusos; solo se protege la integridad de las cámaras."
+      color: "#64748b"
+      reglas:
+        - tipo: sabotaje
+          severidad: media
+
+    hogar:
+      etiqueta: "En casa"
+      descripcion: "Hay gente en casa: zonas restringidas, merodeo en la entrada, armas y caídas."
+      color: "#22c55e"
+      reglas:
+        - tipo: intrusion
+          zonas: [restringida]
+          severidad: alta
+        - tipo: merodeo
+          zonas: [entrada]
+          segundos: 45
+          severidad: media
+        - tipo: objeto_peligroso
+          severidad: critica
+        - tipo: caida
+          severidad: alta
+        - tipo: sabotaje
+          severidad: alta
+
+    nocturno:
+      etiqueta: "Nocturno"
+      descripcion: "De noche: cruzar el acceso, entrar a zonas o merodear es sospechoso."
+      color: "#6366f1"
+      reglas:
+        - tipo: intrusion
+          zonas: [restringida, entrada]
+          severidad: critica
+        - tipo: cruce_linea
+          lineas: [acceso]
+          direccion: entrada
+          severidad: alta
+        - tipo: merodeo
+          segundos: 15
+          severidad: alta
+        - tipo: merodeo
+          nombre: vehiculo_detenido
+          titulo: "Vehículo detenido sospechoso"
+          categorias: [vehiculo]
+          requiere_movimiento: si   # ignora autos estacionados desde antes
+          segundos: 120
+          severidad: media
+        - tipo: objeto_peligroso
+          severidad: critica
+        - tipo: sabotaje
+          severidad: critica
+
+    ausente:
+      etiqueta: "Ausente"
+      descripcion: "No debería haber nadie: cualquier persona visible es una alerta crítica."
+      color: "#ef4444"
+      reglas:
+        - tipo: presencia
+          severidad: critica
+        - tipo: objeto_peligroso
+          severidad: critica
+        - tipo: sabotaje
+          severidad: critica
+
+    comercio:
+      etiqueta: "Comercio abierto"
+      descripcion: "Horario de atención: merodeo, aglomeración, objetos abandonados, armas, carreras, caídas y peleas."
+      color: "#f59e0b"
+      reglas:
+        - tipo: intrusion
+          zonas: [restringida]
+          severidad: alta
+        - tipo: merodeo
+          zonas: [entrada]
+          segundos: 90
+          severidad: media
+        - tipo: aglomeracion
+          umbral: 6
+          segundos: 10
+          severidad: media
+        - tipo: objeto_abandonado
+          segundos: 60
+          severidad: alta
+        - tipo: objeto_peligroso
+          severidad: critica
+        - tipo: carrera
+          severidad: media
+        - tipo: caida
+          severidad: alta
+        - tipo: altercado
+          severidad: alta
+        - tipo: sabotaje
+          severidad: alta
+
+    # Modalidades fijas de las cámaras públicas (no aparecen en el selector general).
+    transito:
+      etiqueta: "Vía pública"
+      descripcion: "Autopista: peatones en la calzada, vehículos detenidos en la banquina, contramano, congestión y cámaras caídas."
+      color: "#0ea5e9"
+      reglas:
+        - tipo: intrusion
+          nombre: peaton_en_autopista
+          titulo: "Peatón en la autopista"
+          categorias: [persona]
+          segundos_min: 1.0
+          severidad: critica
+        - tipo: merodeo
+          nombre: vehiculo_detenido
+          titulo: "Vehículo detenido en la banquina"
+          zonas: [banquina]           # dibújela en el panel
+          categorias: [vehiculo]
+          requiere_movimiento: si     # un cartel confundido con un auto nunca se mueve
+          segundos: 20
+          severidad: alta
+        - tipo: cruce_linea
+          nombre: contramano
+          titulo: "Vehículo en contramano"
+          lineas: [sentido]           # flecha en el sentido de circulación
+          categorias: [vehiculo]
+          direccion: salida
+          severidad: critica
+        - tipo: aglomeracion
+          nombre: congestion
+          titulo: "Congestión"
+          categorias: [vehiculo]
+          umbral: 12
+          segundos: 30
+          enfriamiento: 600
+          severidad: media
+        - tipo: sabotaje
+          detectar: [obstruida, movida, sin_senal]
+          segundos_sin_senal: 20
+          severidad: media
+
+    espacio_publico:
+      etiqueta: "Espacio público"
+      descripcion: "Calles y plazas: tumultos, personas corriendo, permanencias largas, objetos abandonados o peligrosos y vehículos detenidos en el cruce."
+      color: "#14b8a6"
+      reglas:
+        - tipo: aglomeracion
+          titulo: "Tumulto de personas"
+          umbral: 8
+          segundos: 10
+          severidad: media
+        - tipo: carrera
+          titulo: "Persona corriendo / posible huida"
+          severidad: media
+        - tipo: merodeo
+          titulo: "Permanencia prolongada"
+          segundos: 120
+          severidad: baja
+        - tipo: objeto_abandonado
+          segundos: 60
+          severidad: alta
+        - tipo: objeto_peligroso
+          severidad: critica
+        - tipo: merodeo
+          nombre: vehiculo_en_cruce
+          titulo: "Vehículo detenido en el cruce"
+          zonas: [cruce]              # dibújela en el panel
+          categorias: [vehiculo]
+          requiere_movimiento: si
+          segundos: 45
+          severidad: media
+        - tipo: sabotaje
+          detectar: [obstruida, movida, sin_senal]
+          segundos_sin_senal: 20
+          severidad: media
+
+# -----------------------------------------------------------------------------
+#  NOTIFICACIONES (además del panel web, que siempre muestra todo)
+# -----------------------------------------------------------------------------
+notificaciones:
+  severidad_minima: media
+  sonido:                 # pitidos en este equipo
+    activo: si
+    severidad_minima: alta
+  telegram:
+    activo: no
+    token: "${TELEGRAM_TOKEN}"
+    chat_id: "${TELEGRAM_CHAT_ID}"
+    enviar_foto: si
+  webhook:                # Slack, Discord, n8n, Home Assistant...
+    activo: no
+    url: "${VIGIA_WEBHOOK_URL}"
+  correo:
+    activo: no
+    servidor: smtp.gmail.com
+    puerto: 587
+    usuario: "${SMTP_USUARIO}"
+    clave: "${SMTP_CLAVE}"
+    destinatarios: ["${SMTP_DESTINO}"]
+    severidad_minima: alta

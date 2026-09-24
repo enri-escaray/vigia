@@ -1,0 +1,175 @@
+# =============================================================================
+#  VIGÍA · configuración para las capturas de la publicación de LinkedIn
+#  Solo cámaras públicas de EE. UU. (Caltrans, California: datos abiertos, sin
+#  clave). Sin webcam, para que en las imágenes no aparezca nada privado.
+#
+#  Iniciar:  python -m vigia iniciar -c linkedin/config.linkedin.yaml --puerto 8091
+# =============================================================================
+
+sistema:
+  nombre: "Vigía"
+  datos: datos            # linkedin/datos (ignorado por git)
+  retencion_dias: 7
+  nivel_log: INFO
+
+web:
+  host: 127.0.0.1
+  puerto: 8091
+
+deteccion:
+  tipo: auto
+  modelo: ../modelos/yolo11n.pt
+  confianza: 0.40
+  tamano_imagen: 640
+  dispositivo: ""
+  confianza_por_categoria:
+    arma: 0.50
+
+seguimiento:
+  confirmaciones: 3
+  edad_max: 2.0
+  edad_max_por_categoria:
+    equipaje: 10
+
+grabacion:
+  clips: true
+  segundos_antes: 5
+  segundos_despues: 5
+  duracion_max: 30
+  calidad_jpeg: 85
+  ancho_clip: 960
+  espacio_max_gb: 1
+
+camaras:
+  - id: autopista
+    nombre: "Autopista I-80 · Emeryville"
+    fuente: "https://wzmedia.dot.ca.gov/D4/E80_JWO_ASHBY_Av.stream/playlist.m3u8"
+    fps: 8
+    fps_deteccion: 3
+    deteccion:
+      confianza: 0.25
+    zonas: []
+    lineas: []
+  - id: la_i5
+    nombre: "I-5 al sur de la I-10 · Los Ángeles"
+    fuente: "https://wzmedia.dot.ca.gov/D7/CCTV-17.stream/playlist.m3u8"
+    fps: 8
+    fps_deteccion: 3
+    deteccion:
+      confianza: 0.25
+    zonas: []
+    lineas: []
+  - id: santa_monica
+    nombre: "I-10 McClure Tunnel · Santa Mónica"
+    fuente: "https://wzmedia.dot.ca.gov/D7/CCTV-101.stream/playlist.m3u8"
+    fps: 8
+    fps_deteccion: 3
+    deteccion:
+      confianza: 0.25
+    zonas: []
+    lineas: []
+  - id: cruce
+    nombre: "Cruce Ocean Blvd · Long Beach"
+    fuente: "https://wzmedia.dot.ca.gov/D7/CCTV-957.stream/playlist.m3u8"
+    modalidad: espacio_publico
+    fps: 8
+    fps_deteccion: 3
+    deteccion:
+      modelo: ../modelos/yolo11s.pt
+      confianza: 0.25
+    seguimiento:
+      confianza_quietos: 0.35
+    zonas: []
+    lineas: []
+
+modalidades:
+  inicial: auto
+  por_defecto: transito
+  definiciones:
+    transito:
+      etiqueta: "Vía pública"
+      descripcion: "Autopista: peatones en la calzada, vehículos detenidos en la banquina, contramano, congestión y cámaras caídas."
+      color: "#0ea5e9"
+      reglas:
+        - tipo: intrusion
+          nombre: peaton_en_autopista
+          titulo: "Peatón en la autopista"
+          categorias: [persona]
+          segundos_min: 1.0
+          severidad: critica
+        - tipo: merodeo
+          nombre: vehiculo_detenido
+          titulo: "Vehículo detenido en la banquina"
+          zonas: [banquina]
+          categorias: [vehiculo]
+          requiere_movimiento: si
+          segundos: 20
+          severidad: alta
+        - tipo: cruce_linea
+          nombre: contramano
+          titulo: "Vehículo en contramano"
+          lineas: [sentido]
+          categorias: [vehiculo]
+          direccion: salida
+          severidad: critica
+        - tipo: aglomeracion
+          nombre: congestion
+          titulo: "Congestión"
+          categorias: [vehiculo]
+          umbral: 12
+          segundos: 30
+          enfriamiento: 600
+          severidad: media
+        - tipo: sabotaje
+          detectar: [obstruida, movida, sin_senal]
+          segundos_sin_senal: 20
+          severidad: media
+
+    espacio_publico:
+      etiqueta: "Espacio público"
+      descripcion: "Calles y plazas: tumultos, personas corriendo, permanencias largas, objetos abandonados o peligrosos y vehículos detenidos en el cruce."
+      color: "#14b8a6"
+      reglas:
+        - tipo: aglomeracion
+          titulo: "Tumulto de personas"
+          umbral: 8
+          segundos: 10
+          severidad: media
+        - tipo: carrera
+          titulo: "Persona corriendo / posible huida"
+          severidad: media
+        - tipo: merodeo
+          titulo: "Permanencia prolongada"
+          segundos: 120
+          severidad: baja
+        - tipo: objeto_abandonado
+          segundos: 60
+          severidad: alta
+        - tipo: objeto_peligroso
+          severidad: critica
+        - tipo: merodeo
+          nombre: vehiculo_en_cruce
+          titulo: "Vehículo detenido en el cruce"
+          zonas: [cruce]
+          categorias: [vehiculo]
+          requiere_movimiento: si
+          segundos: 45
+          severidad: media
+        - tipo: sabotaje
+          detectar: [obstruida, movida, sin_senal]
+          segundos_sin_senal: 20
+          severidad: media
+
+    desarmado:
+      etiqueta: "Desarmado"
+      descripcion: "Solo avisa si una cámara deja de transmitir."
+      color: "#64748b"
+      reglas:
+        - tipo: sabotaje
+          detectar: [sin_senal]
+          severidad: baja
+
+notificaciones:
+  severidad_minima: media
+  sonido:
+    activo: no

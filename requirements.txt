@@ -1,0 +1,8 @@
+numpy>=1.24
+opencv-python>=4.8
+fastapi>=0.110
+uvicorn>=0.27
+ruamel.yaml>=0.18
+requests>=2.31
+# Detector YOLO (recomendado). Instala PyTorch; sin él Vigía usa HOG o el detector de movimiento.
+ultralytics>=8.3
