@@ -1,0 +1,107 @@
+# Cámaras públicas de autopista de Caltrans (California) — distrito(s) 4 (Área de la Bahía de San Francisco).
+# Generado por `python -m vigia publicas`. Datos abiertos y gratuitos:
+# https://cwwp2.dot.ca.gov/documentation/cctv/cctv.htm
+#
+# Las reglas de "banquina" (vehículo detenido) y "sentido" (contramano) se
+# activan cuando dibuje esa zona y esa línea en el panel ("Zonas y líneas").
+# En la línea "sentido", la flecha debe apuntar en el sentido de circulación
+# correcto: cruzarla al revés dispara la alerta.
+
+sistema:
+  nombre: "Vigía · Vía pública"
+  datos: datos/publicas
+
+web:
+  puerto: 8080
+
+deteccion:
+  tipo: auto
+  modelo: modelos/yolo11n.pt
+  confianza: 0.35
+
+seguimiento:
+  confirmaciones: 3
+  edad_max: 2.5
+  edad_max_por_categoria:
+    vehiculo: 4
+
+grabacion:
+  espacio_max_gb: 2
+
+camaras:
+  - id: tv216_i_680_north_main_street
+    nombre: "TV216 -- I-680 : North Main Street (Walnut Creek)"
+    fuente: "https://wzmedia.dot.ca.gov/D4/S680_at_N_Main_St.stream/playlist.m3u8"
+    fps: 8
+    fps_deteccion: 4
+    zonas: []
+    lineas: []
+  - id: tv516_i_80_west_of_ashby_avenue
+    nombre: "TV516 -- I-80 : West of Ashby Avenue (Emeryville)"
+    fuente: "https://wzmedia.dot.ca.gov/D4/E80_JWO_ASHBY_Av.stream/playlist.m3u8"
+    fps: 8
+    fps_deteccion: 4
+    zonas: []
+    lineas: []
+  - id: tv322_i_280_us_101
+    nombre: "TV322 -- I-280 : US-101 (San Francisco)"
+    fuente: "https://wzmedia.dot.ca.gov/D4/N280_at_JCT_101.stream/playlist.m3u8"
+    fps: 8
+    fps_deteccion: 4
+    zonas: []
+    lineas: []
+
+modalidades:
+  inicial: auto
+  por_defecto: transito
+  definiciones:
+    transito:
+      etiqueta: "Vía pública"
+      descripcion: "Autopista: peatones en la calzada, vehículos detenidos en la banquina, contramano, congestión y cámaras caídas."
+      color: "#0ea5e9"
+      reglas:
+        - tipo: intrusion
+          nombre: peaton_en_autopista
+          titulo: "Peatón en la autopista"
+          categorias: [persona]
+          segundos_min: 1.0
+          severidad: critica
+        - tipo: merodeo
+          nombre: vehiculo_detenido
+          titulo: "Vehículo detenido en la banquina"
+          zonas: [banquina]
+          categorias: [vehiculo]
+          segundos: 20
+          severidad: alta
+        - tipo: cruce_linea
+          nombre: contramano
+          titulo: "Vehículo en contramano"
+          lineas: [sentido]
+          categorias: [vehiculo]
+          direccion: salida
+          severidad: critica
+        - tipo: aglomeracion
+          nombre: congestion
+          titulo: "Congestión"
+          categorias: [vehiculo]
+          umbral: 12
+          segundos: 30
+          enfriamiento: 600
+          severidad: media
+        - tipo: sabotaje
+          detectar: [obstruida, movida, sin_senal]
+          segundos_sin_senal: 20
+          severidad: media
+    desarmado:
+      etiqueta: "Desarmado"
+      descripcion: "Solo avisa si una cámara deja de transmitir."
+      color: "#64748b"
+      reglas:
+        - tipo: sabotaje
+          detectar: [sin_senal]
+          severidad: baja
+
+notificaciones:
+  severidad_minima: media
+  sonido:
+    activo: no

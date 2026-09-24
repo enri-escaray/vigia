@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+datos/
+modelos/
+config.yaml.bak
+config.yaml.tmp
+.pytest_cache/

@@ -1,0 +1,30 @@
+[project]
+name = "vigia"
+version = "1.0.0"
+description = "Videovigilancia inteligente con detección de comportamientos sospechosos y alertas por modalidades"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "opencv-python>=4.8",
+    "fastapi>=0.110",
+    "uvicorn>=0.27",
+    "ruamel.yaml>=0.18",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+yolo = ["ultralytics>=8.3"]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[project.scripts]
+vigia = "vigia.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["vigia*"]
+
+[tool.setuptools.package-data]
+vigia = ["web/static/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

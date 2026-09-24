@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "vigia",
+      "runtimeExecutable": "C:\\Users\\Enrique\\Desktop\\vigia\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": ["-m", "vigia", "iniciar"],
+      "port": 8080
+    },
+    {
+      "name": "vigia-linkedin",
+      "runtimeExecutable": "C:\\Users\\Enrique\\Desktop\\vigia\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": ["-m", "vigia", "iniciar", "-c", "linkedin/config.linkedin.yaml", "--puerto", "8091"],
+      "port": 8091
+    }
+  ]
+}
