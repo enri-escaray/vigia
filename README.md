@@ -1,5 +1,7 @@
 # Vigía — Videovigilancia inteligente con alertas por modalidades
 
+[![Pruebas](https://github.com/enri-escaray/vigia/actions/workflows/pruebas.yml/badge.svg)](https://github.com/enri-escaray/vigia/actions/workflows/pruebas.yml)
+
 Vigía analiza en tiempo real el video de tus cámaras (webcam, cámaras IP por
 RTSP, transmisiones HLS/HTTP o archivos de video), **detecta comportamientos
 indebidos o sospechosos** y **dispara alertas** con captura, clip de video y
@@ -620,6 +622,12 @@ historial, anti-repetición, clips y límite de espacio, reconexión de una
 transmisión congelada, cliente de cámaras públicas, API web y una prueba de
 punta a punta que pasa el video de la demo por todo el sistema y verifica que
 aparezcan las alertas esperadas.
+
+Además corren solas en GitHub en cada push a `main` y en cada pull request,
+en Windows y Linux con Python 3.10 y 3.12. El flujo está en
+`.github/workflows/pruebas.yml`; el indicador del principio de este README
+muestra si la última ejecución pasó. Ahí se instalan las dependencias sin YOLO
+ni PyTorch, porque las pruebas no los usan.
 
 ## 16. Solución de problemas
 
